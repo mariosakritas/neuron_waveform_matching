@@ -8,7 +8,7 @@ Tolias, A. S.; Ecker, A. S.; Siapas, A. G.; Hoenselaar, A.; Keliris, G. A. & Log
 Recording chronically from the same neurons in awake, behaving primates.
 Journal of neurophysiology, 2007, 98, 3780-3790
 
-@author: arne
+@author: arne, jules, marios
 """
 
 
@@ -1580,3 +1580,6 @@ def plot_matches_days(ax, matched_db):
     #     if n % every_nth_x != 0:
     #         label.set_visible(False)
 
+
+if __name__ == '__main__':
+    cli()
