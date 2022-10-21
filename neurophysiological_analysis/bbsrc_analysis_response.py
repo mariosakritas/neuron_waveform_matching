@@ -536,238 +536,6 @@ def plot_latency_distribution(db_path=None, ax= None, colours = None,
 def cli():
     pass
 
-@click.command(name='response')
-@click.argument('db_path', type=click.Path(exists=True))
-@click.option('--output', '-o', type=click.Path(exists=False))
-@click.option('--pre', '-p', default=50)
-@click.option('--post', '-P', default=100)
-@click.option('--binwidth', '-b', default=2)
-@click.option('--context_path', '-c', type=click.Path(exists=False))
-def cli_response(db_path=None,
-        output=None,
-        pre=50,
-        post=100,
-        binwidth=2,
-        alpha = 0.01,
-        show=False,
-        context_path=None,
-        **kwargs):
-
-    animals = [op.join(db_path, animal) for animal in os.listdir(db_path) if animal.startswith('M102')]
-    for animal_path in sorted(animals):
-        file_name = 'Response_analysis_of_neurons_' + op.split(animal_path)[1]
-        pdf_path = op.join(output, file_name)
-        pdf = PdfPages(pdf_path + '.pdf')
-        sessions = helpers.get_sessions_with_drc_recordings(animal_path)
-
-        for recording in sorted(sessions):
-            session_path = sessions[recording]['absolute_path']
-            print('analysing session: ', session_path)
-            recordings = helpers.get_recordings(session_path)
-            reader = NeoIO(session_path)
-            block = reader.read_block(recordings=recordings,
-                                      dtypes=['spikes'],
-                                      cluster_groups=['Good', 'MUA'])
-            units = block.list_units
-            n_units = len(units)
-
-            if n_units > 0:
-                for i in units:
-                    total_units += 1
-                    absolute_index += 1
-                    print('Session {} Chan{:d} Unit{:d}'.format(
-                        session_path.split('/')[-2],
-                        i.annotations['channel_index'],
-                        i.annotations['unit_index']))
-                    grid = plt.GridSpec(11, 9)
-                    axes = np.array([[plt.subplot(grid[:3, :5]),
-                                      plt.subplot(grid[0:2, 6:])],
-                                     [plt.subplot(grid[4:7, :5]),
-                                      plt.subplot(grid[2:5, 6:])],
-                                     [plt.subplot(grid[8:, :5]),
-                                      plt.subplot(grid[6:8, 6:])],
-                                     [None, plt.subplot(grid[8:, 6:])]])
-                    fig = plt.gcf()
-
-
-                    psth_burst = np.zeros(int(np.ceil((pre + post) / binwidth)))
-                    psth_tone = np.zeros(int(np.ceil((pre + post) / binwidth)))
-                    n_events_burst = 0
-                    n_events_tone = 0
-
-                    FRA_early = None
-                    FRA_late = None
-                    tone_segs = []
-
-                    for seg in block.segments:
-                        if 'NoiseBurst' in seg.name:
-                            if seg.spiketrains:
-                                ps, edges, n_events, duration_noise = compute_psth(seg,
-                                             i,
-                                             binwidth=binwidth,
-                                             pre=pre,
-                                             post=post,
-                                             ax=None)
-                                psth_burst += ps
-                                n_events_burst += n_events
-
-                        if 'ToneSequence' in seg.name:
-                            if seg.spiketrains:
-                                ps, edges, n_events, duration_tone = compute_psth(seg,
-                                             i,
-                                             binwidth=binwidth,
-                                             pre=pre,
-                                             post=post,
-                                             ax=None)
-                                tone_segs.append(seg)
-
-                                psth_tone += ps
-                                n_events_tone += n_events
-
-                                FRA_early, freqs, levels = plot_FRA(seg, i,
-                                                     0.05,
-                                                     FRA_early,
-                                                     ax=axes[0,1])
-
-                                FRA_late, freqs, levels = plot_FRA(seg, i,
-                                                    0.1,
-                                                    FRA_late,
-                                                    ax=axes[2,1])
-
-                    if len(tone_segs) > 0:
-                        p = apply_first_criterion(tone_segs, i)
-
-                    # plot psth_burst
-                    ax=axes[0,0]
-                    ax.set_title('Noise-burst PSTH', fontweight="bold")
-                    ax.set_xlabel('Time relative to stimulus onset (s)')
-                    ax.set_ylabel('Spike rate')
-                    ax.bar(edges[:-1], psth_burst / binwidth / n_events_burst,
-                           width=binwidth,
-                           color=3*[.5],
-                           edgecolor='none',
-                           linewidth=0,
-                           align='edge')
-                    ax.axvspan(0, duration_noise,
-                               color=[0, 0.5, 1],
-                               alpha=.5,
-                               lw=0,
-                               zorder=0)
-
-                    # plot psth_tone 1
-                    ax=axes[1,0]
-                    ax.set_title('Tone PSTH- Wilcoxon Test', fontweight="bold")
-                    ax.set_xlabel('Time relative to stimulus onset (s)')
-                    ax.set_ylabel('Spike rate')
-                    ax.bar(edges[:-1], psth_tone / binwidth / n_events_tone,
-                           width=binwidth,
-                           color=3 * [.5],
-                           edgecolor='none',
-                           linewidth=0,
-                           align='edge')
-                    if p <= alpha:
-                        colour = scu.NICE_COLORS['forest green']
-                    else:
-                        colour = scu.NICE_COLORS['tomato']
-
-                    ax.axvspan(0, duration_tone,
-                               color=colour,
-                               alpha=.5,
-                               lw=0,
-                               zorder=0)
-                    ax.text(post, (0.9 * psth_tone/ binwidth / n_events_tone).max(),
-                                   "p-value= " + '%s' % float('%.3g' % p), horizontalalignment='right')
-
-                    # plot psth_tone 2
-                    ax=axes[2,0]
-                    ax.set_title('Tone PSTH- Latency Test', fontweight="bold")
-                    ax.set_xlabel('Time relative to stimulus onset (s)')
-                    ax.set_ylabel('Spike rate')
-                    ax.bar(edges[:-1], psth_tone / binwidth / n_events_tone,
-                           width=binwidth,
-                           color=3*[.5],
-                           edgecolor='none',
-                           linewidth=0,
-                           align='edge')
-                    ax.axvspan(0, 0.1,
-                        color=[0, 0.5, 1],
-                        alpha=.5,
-                        lw=0,
-                        zorder=0)
-
-                    resp, m, std = find_response_latency(
-                        psth_tone / binwidth / n_events_tone)
-
-                    if not math.isnan(resp):
-                        ax.axvline(x=resp, color='r', linewidth = 1.0)
-                        resp = float(resp) * 1000
-                        ax.text(post, (0.9 * psth_tone/ binwidth
-                                        / n_events_tone).max(), "latency= " + '%s'
-                                        % float('%.3g' % resp) + " ms",
-                                        horizontalalignment='right')
-
-                    ax.axhline(m, color='k', linestyle='--')
-                    ax.axhspan(m-3*std, m+3*std,
-                               color=scu.NICE_COLORS['lightgray'],
-                               alpha=.5,
-                               lw=0,
-                               zorder=0)
-
-                    # plot FRA_early
-                    if FRA_early is not None:
-                        ax=axes[1,1]
-                        ax.imshow(FRA_early, vmin=0, vmax=FRA_early.max(), aspect='auto',
-                          interpolation='nearest', origin='lower')
-
-                        ax.set_xlabel('Frequency (kHz)')
-                        ax.set_ylabel('Level (dB SPL)')
-
-                        ax.set_xticks(range(0, len(freqs), 4))
-                        fl = ['%0.1f' % x for x in freqs[::4] / 1000.]
-                        ax.set_xticklabels(fl)
-                        ax.set_yticks(range(len(levels)))
-                        ax.set_yticklabels(np.asarray(levels, dtype=int))
-
-                    # plot FRA_late
-                    if FRA_late is not None:
-                        ax=axes[3,1]
-                        ax.imshow(FRA_late, vmin=0, vmax=FRA_late.max(), aspect='auto',
-                          interpolation='nearest', origin='lower')
-
-                        ax.set_xlabel('Frequency (kHz)')
-                        ax.set_ylabel('Level (dB SPL)')
-
-                        ax.set_xticks(range(0, len(freqs), 4))
-                        fl = ['%0.1f' % x for x in freqs[::4] / 1000.]
-                        ax.set_xticklabels(fl)
-                        ax.set_yticks(range(len(levels)))
-                        ax.set_yticklabels(np.asarray(levels, dtype=int))
-
-                    fig.suptitle('Session {} Chan{:d} Unit{:d}'.format(
-                        session_path.split('/')[-2],
-                        i.annotations['channel_index'],
-                        i.annotations['unit_index']),
-                        color=get_clustergroup_color(i.description))
-
-                    for axx in axes.flat:
-                        if axx is not None:
-                            scu.set_font_axes(axx, add_size=2)
-                            scu.simple_xy_axes(axx)
-
-                    fig.set_size_inches(8, 1.75*4)  # 1.5 * n_rows)
-                    rect = (0.05, 0.025, 0.95, 0.95)
-                    fig.tight_layout(pad=.1, h_pad=.075, w_pad=.025, rect=rect)
-
-                    if output is not None:
-                        pdf.savefig(fig)
-
-                    plt.close(fig)
-        if output is not None:
-            pdf.close()
-
-cli.add_command(cli_response)
-
-
 
 @click.command(name='drc_response')
 @click.argument('db_path', type=click.Path(exists=True))
@@ -780,7 +548,16 @@ def cli_drc_response(db_path=None,
         point=45,
         show=False,
         **kwargs):
+    '''
+    callable function to create a pdf showing all units' responoses to DRC stimuli
+    inputs:
+    - db_path : database
+    - period : the amount of timee in seconds to display on the x-axis
+    - point: th etime point around which the plot shouold show the DRC response
 
+    outputs:
+    - pdf containing a page pere unit , showing responses to DRC.
+    '''
     animals = [op.join(db_path, animal, 'neural') for animal in os.listdir(db_path) if animal.startswith('M102')]
     for animal in animals:
         print(animal)
@@ -888,6 +665,15 @@ def cli_summary_plot(db_path=None,
         alpha = 0.01,
         show=False,
         **kwargs):
+    '''
+        callable function to create a pdf showing all units' responoses to DRC stimuli
+        inputs:
+        - db_path : database
+        - pre and post: amount of timee peeristimulus to bee shown
+
+        outputs:
+        - pdf containing a page pere unit , showing responses to tones and noisebursts as well as statistics about the response.
+        '''
 
     animals = [op.join(db_path, animal) for animal in os.listdir(db_path) if animal.startswith('M102')]
     for animal_path in animals:
@@ -1179,7 +965,15 @@ def cli_tetrode_summary_plot(db_path=None,
         alpha = 0.01,
         show=False,
         **kwargs):
+    '''
+        callable function to create a pdf showing all units' responoses to DRC stimuli
+        inputs:
+        - db_path : database
+        - pre, post, binwidth: params to construct histograms of unit responses.
 
+        outputs:
+        - pdf containing a page pere unit , showing responses to all stimuli + summary statistics whcih recognise CORE units
+        '''
 
     animals = [op.join(db_path, animal) for animal in os.listdir(db_path) if animal.startswith('M102')]
     for animal in animals:
@@ -1271,7 +1065,16 @@ def cli_venn(db_path=None,
              post = 100,
              binwidth = 2,
              **kwargs):
+    '''
+        callable function to create a pdf showing all units' responoses to DRC stimuli
+        inputs:
+        - db_path : database
+        - period : the amount of timee in seconds to display on the x-axis
+        - point: th etime point around which the plot shouold show the DRC response
 
+        outputs:
+        - pdf containing a page pere unit , showing responses to DRC.
+    '''
     animals = [op.join(db_path, animal) for animal in os.listdir(db_path) if animal.startswith('M102')]
     #create pdf doc
     file_name = 'Venn_diagrams_for_3_criteria_' + str(latency) +'_'+str(alpha)
@@ -1457,6 +1260,17 @@ def cli_response_new(db_path=None,
         alpha = 0.01,
         latency = 20,
         **kwargs):
+    '''
+        callable function to get a newe updated database only with the Core units which have short latencies and also aree responsive to tones.
+        inputs:
+        - db_path : database
+        - pre, post, binwidth: params for the analysis
+        - alpha: confidence level for responsiveness of units to tones
+        - latency: minimum latency for inclusion
+
+        outputs:
+        - new database in the form of an .npy file
+        '''
 
     animals = [op.join(db_path, animal) for animal in os.listdir(db_path)
                if animal.startswith('M102') and not animal.endswith('_neural')]
