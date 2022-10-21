@@ -688,9 +688,11 @@ def cli_tolias2007(path=None,
                    output=None,
                    overwrite=False,
                    create_pdf=False):
+    '''
     # waveform matching based on Tolias et al. J Neurophysiol 2007
 
     # user-defined thresholds for shape and scale "distances"
+    '''
     threshold_shape = 1.
     threshold_scaling = 1.5
     thresholded_indices = []
