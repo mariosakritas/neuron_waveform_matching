@@ -10,6 +10,7 @@ We make use of NEO-core objects for neurophysiological data, as well as decorato
 Scripts compatible with Python3.x
 
 ![img.png](img.png)
+
 Figure showing examples of what matched and non-matched comparisons looked like in our dataset. 
 
 
