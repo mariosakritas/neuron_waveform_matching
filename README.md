@@ -1,24 +1,19 @@
-# neural_analysis_tools
-These are functions/ programmes for analysing various different types of data collected in a systems neuroscience lab
+# nuron_wafeform matching 
 
-I make use of NEO-core objects for neurophysiological data but functions could also be used without it.
-I also make use of click decorators so that functions are callable from the terminal. 
+This is a repository for soft clustering of neuronal waveform comparisons into matches or not matches. 
+I.e.: deciding if two putative units recorded via extracellular e-phys on separate occasions are in fact the same cell recorded twice.
+The quantification of the difference between two waveforms is as in Tolias et al. 2007 (using d1 and d2 to quanntify difference in shape and magnitude respectively).
+
+Our method then uses a mixture of two gaussians model, with the parameters of one fixed to a 'null' and the second one is learnt using an Expectation-Maximization Algorithm.
+
+We make use of NEO-core objects for neurophysiological data, as well as decorators so that functions are callable from the terminal. 
 Scripts compatible with Python3.x
 
-Detailed description:
 
-1. Tuning analysis
 
-Contains scripts where the firing of neurons in response to tones of various frequencies and intensities is analyzed to derive the tuning curves for these units
+Reference:
 
-2. Waveform matching 
+Tolias, A. S.; Ecker, A. S.; Siapas, A. G.; Hoenselaar, A.; Keliris, G. A. & Logothetis, N. K.Recording chronically from the same neurons in awake, behaving primates.Journal of neurophysiology, 2007, 98, 3780-3790
 
-Contains scripts for determining the similarity between two waveforms (coming from one tetrode each). The method uses a mixture of two gaussians, the parameters of which are learnt using an Expectation-Maximization Algorithm. The initial quantification of the similarity between the waveforms was copied from Tolias et al. 2007.
 
-3. Pupil and Running analyses
 
-Contains scipts anlyze the pupil and running data of the animals and then use the results to further analyze neural data.
-
-4. Behavioural data analysis
-
-Contains scripts for the analysis of home-collected data from auditory Go/No-Go and 2-AFC behavioural experiments. 
