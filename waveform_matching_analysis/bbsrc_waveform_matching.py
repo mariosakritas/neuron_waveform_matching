@@ -409,14 +409,14 @@ def get_ellipse(mean, covariances, confidence=0.99, nb_points=1000):
 def cli():
     pass
 
-@click.command(name='EM_matching')
+@click.command(name='wf_matching')
 @click.argument('db_path', type=click.Path(exists=True))
 @click.option('--output', '-o', default=None)
 @click.option('--nb_q_turn_null', '-n', default=4)
 @click.option('--confidence', '-conf', default=0.99)
 @click.option('--overwrite', '-O', is_flag=True)
 @click.option('--create-pdf', '-c', is_flag=True)
-def cli_EM_matching(db_path=None,
+def cli_wf_matching(db_path=None,
                 output=None,
                 nb_q_turn_null=4,
                 confidence=0.99,
@@ -649,7 +649,7 @@ def cli_EM_matching(db_path=None,
                         pdf.savefig(fig)
                         plt.close(fig)        
     
-cli.add_command(cli_EM_matching)
+cli.add_command(cli_wf_matching)
 
 
 
